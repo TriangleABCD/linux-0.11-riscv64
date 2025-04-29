@@ -1,0 +1,7 @@
+#ifndef __KERN_MM_MEMLAYOUT_H__
+#define __KERN_MM_MEMLAYOUT_H__
+
+#define KSTACKPAGE  2
+#define KSTACKSIZE  (KSTACKPAGE * PGSIZE)
+
+#endif

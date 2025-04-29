@@ -3,15 +3,17 @@ TOP_DIR:= $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 CUR_DIR:= $(CURDIR)
 
 # 交叉编译工具链
-CROSS_COMPILE:= riscv64-linux-gnu-
+CROSS_COMPILE:= riscv64-unknown-elf-
 CC:= $(CROSS_COMPILE)gcc
 LD:= $(CROSS_COMPILE)ld
+OBJCOPY:= $(CROSS_COMPILE)objcopy
+OBJDUMP:= $(CROSS_COMPILE)objdump
 
 # QEMU 选项
 QEMU:= qemu-system-riscv64
 CPUS:= 4
 MEM:= 512m
-QEMU_FLAGS:= -bios none -smp $(CPUS) -nographic -M virt -m $(MEM)
+QEMU_FLAGS:= -bios default -smp $(CPUS) -nographic -M virt -m $(MEM)
 
 # 源文件和目标文件
 SRC_DIR:= $(TOP_DIR)/src
@@ -19,26 +21,43 @@ BUILD_DIR:= $(TOP_DIR)/build
 OUT_DIR:= $(TOP_DIR)/out
 
 SRC:= $(shell find $(SRC_DIR) -name "*.s")
+SRC:= $(shell find $(SRC_DIR) -name "*.S")
 SRC+= $(shell find $(SRC_DIR) -name "*.c")
 
 OBJS:= $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRC))
 OBJS:= $(patsubst $(SRC_DIR)/%.s, $(BUILD_DIR)/%.o, $(OBJS))
+OBJS:= $(patsubst $(SRC_DIR)/%.S, $(BUILD_DIR)/%.o, $(OBJS))
 
 INCLUDE_FLAG:= -I$(TOP_DIR)/src/include
-INCLUDE_FLAG+= -I$(TOP_DIR)/src/arch/riscv64/driver
 
-CFLAGS:= --freestanding $(INCLUDE_FLAG)
+CFLAGS:= -mcmodel=medany -std=gnu99 -Wno-unused -Werror
+CFLAGS+= -fno-builtin -Wall -O2 -nostdinc
+CFLAGS+= -fno-stack-protector -ffunction-sections -fdata-sections
+CFLAGS+= $(INCLUDE_FLAG)
 
-NAME:= kernel.elf
+LDFLAGS:= -m elf64lriscv
+LDFLAGS+= -nostdlib --gc-sections
+LD_SCIPT:= $(TOP_DIR)/platform/qemu-opensbi.ld
+
+NAME:= kernel
+ELF:= $(NAME).elf
+IMG:= $(NAME).img
 
 ################################################################
 
-$(NAME): $(OBJS)
-	@mkdir -p $(dir $@)
+$(IMG): $(ELF)
 	@mkdir -p $(OUT_DIR)
-	$(LD) $^ -o $(OUT_DIR)/$@ --entry=_start -Ttext=0x80000000
+	$(OBJCOPY) $(OUT_DIR)/$(ELF) --strip-all -O binary $(OUT_DIR)/$@
+
+$(ELF): $(OBJS)
+	@mkdir -p $(OUT_DIR)
+	$(LD) $^ -o $(OUT_DIR)/$@ $(LDFLAGS) -T $(LD_SCIPT)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.s
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.S
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -46,13 +65,10 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-qemu: $(NAME)
-	$(QEMU) $(QEMU_FLAGS) -kernel $(OUT_DIR)/$(NAME)
-
-debug:
-	@echo $(OBJS)
+qemu: $(IMG)
+	$(QEMU) $(QEMU_FLAGS) -device loader,file=$(OUT_DIR)/$(IMG),addr=0x80200000
 
 clean:
 	rm -rf $(BUILD_DIR)	$(OUT_DIR)
 
-.PHONY: qemu clean debug
+.PHONY: qemu clean
