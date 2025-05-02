@@ -29,6 +29,8 @@ OBJS:= $(patsubst $(SRC_DIR)/%.s, $(BUILD_DIR)/%.o, $(OBJS))
 OBJS:= $(patsubst $(SRC_DIR)/%.S, $(BUILD_DIR)/%.o, $(OBJS))
 
 INCLUDE_FLAG:= -I$(TOP_DIR)/src/include
+INCLUDE_FLAG+= -I$(TOP_DIR)/src/include/libs
+INCLUDE_FLAG+= -I$(TOP_DIR)/src/include/hal
 
 CFLAGS:= -mcmodel=medany -std=gnu99 -Wno-unused -Werror
 CFLAGS+= -fno-builtin -Wall -O2 -nostdinc

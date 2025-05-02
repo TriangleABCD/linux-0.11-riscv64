@@ -1,5 +1,5 @@
-#ifndef _ASM_RISCV_SBI_H
-#define _ASM_RISCV_SBI_H
+#ifndef SBI_H
+#define SBI_H
 
 typedef struct {
   unsigned long base;
