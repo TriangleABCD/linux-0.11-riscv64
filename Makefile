@@ -11,8 +11,8 @@ OBJDUMP:= $(CROSS_COMPILE)objdump
 
 # QEMU 选项
 QEMU:= qemu-system-riscv64
-CPUS:= 4
-MEM:= 512m
+CPUS:= 1
+MEM:= 512M
 QEMU_FLAGS:= -bios default -smp $(CPUS) -nographic -M virt -m $(MEM)
 
 # 源文件和目标文件
@@ -33,6 +33,7 @@ INCLUDE_FLAG:= -I$(TOP_DIR)/src/include
 CFLAGS:= -mcmodel=medany -std=gnu99 -Wno-unused -Werror
 CFLAGS+= -fno-builtin -Wall -O2 -nostdinc
 CFLAGS+= -fno-stack-protector -ffunction-sections -fdata-sections
+CFLAGS+= -ffreestanding
 CFLAGS+= $(INCLUDE_FLAG)
 
 LDFLAGS:= -m elf64lriscv
@@ -66,7 +67,8 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 qemu: $(IMG)
-	$(QEMU) $(QEMU_FLAGS) -device loader,file=$(OUT_DIR)/$(IMG),addr=0x80200000
+	# $(QEMU) $(QEMU_FLAGS) -device loader,file=$(OUT_DIR)/$(IMG),addr=0x80200000
+	$(QEMU) $(QEMU_FLAGS) -kernel $(OUT_DIR)/$(ELF)
 
 clean:
 	rm -rf $(BUILD_DIR)	$(OUT_DIR)
